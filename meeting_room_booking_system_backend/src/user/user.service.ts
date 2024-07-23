@@ -14,6 +14,7 @@ import { Permission } from './entities/permission.entity';
 import { RedisService } from 'src/redis/redis.service';
 import { md5 } from '../utils';
 import { UserLoginDto } from './dto/UserLoginDto';
+import { LoginUserVo } from './vo/login-user.vo';
 @Injectable()
 export class UserService {
   private logger = new Logger();
@@ -64,7 +65,44 @@ export class UserService {
     }
   }
 
-  async userLogin(userLoginData: UserLoginDto) {}
+  async userLogin(userLoginData: UserLoginDto, isAdmin: boolean) {
+    const user = await this.userRepository.findOne({
+      where: {
+        username: userLoginData.username,
+        isAdmin,
+      },
+      relations: ['roles', 'roles.permission'],
+    });
+    if (!user) {
+      throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
+    }
+
+    if (md5(userLoginData.password) !== user.password) {
+      throw new HttpException('密码错误', HttpStatus.BAD_REQUEST);
+    }
+    const vo = new LoginUserVo();
+    vo.userInfo = {
+      id: user.id,
+      username: user.username,
+      nickName: user.nickName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      headPic: user.headPic,
+      createTime: user.createTime as unknown as string,
+      isFrozen: user.isFrozen,
+      isAdmin: user.isAdmin,
+      roles: user.roles.map((v) => v.name),
+      permissions: user.roles.reduce((arr, item) => {
+        item.permissions.forEach((permission) => {
+          if (arr.indexOf(permission) === -1) {
+            arr.push(permission);
+          }
+        });
+        return arr;
+      }, []),
+    };
+    return user;
+  }
 
   async initData() {
     const user1 = new User();

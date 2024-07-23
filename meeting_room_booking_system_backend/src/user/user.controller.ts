@@ -39,10 +39,10 @@ export class UserController {
 
   @Post('user-login')
   async userLogin(@Body() userLoginData: UserLoginDto) {
-    // const user = await this.userService.userLogin(userLoginData);
+    const user = await this.userService.userLogin(userLoginData);
     console.log('userLoginData', userLoginData);
 
-    return 'success';
+    return user;
   }
 
   @Post('admin-login')
