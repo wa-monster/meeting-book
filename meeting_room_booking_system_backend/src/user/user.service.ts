@@ -15,6 +15,7 @@ import { RedisService } from 'src/redis/redis.service';
 import { md5 } from '../utils';
 import { UserLoginDto } from './dto/UserLoginDto';
 import { LoginUserVo } from './vo/login-user.vo';
+
 @Injectable()
 export class UserService {
   private logger = new Logger();
@@ -71,7 +72,7 @@ export class UserService {
         username: userLoginData.username,
         isAdmin,
       },
-      relations: ['roles', 'roles.permission'],
+      relations: ['roles', 'roles.permissions'],
     });
     if (!user) {
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
@@ -80,6 +81,7 @@ export class UserService {
     if (md5(userLoginData.password) !== user.password) {
       throw new HttpException('密码错误', HttpStatus.BAD_REQUEST);
     }
+    // 封装返回信息
     const vo = new LoginUserVo();
     vo.userInfo = {
       id: user.id,
@@ -101,7 +103,7 @@ export class UserService {
         return arr;
       }, []),
     };
-    return user;
+    return vo;
   }
 
   async initData() {
