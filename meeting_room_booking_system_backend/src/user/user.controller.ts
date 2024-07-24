@@ -1,4 +1,12 @@
-import { Body, Controller, Inject, Post, Query, Get } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Inject,
+  Post,
+  Query,
+  Get,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/registerUserDto';
 import { UserLoginDto } from './dto/UserLoginDto';
@@ -73,6 +81,41 @@ export class UserController {
     );
     return vo;
   }
+  @Post('user-refresh')
+  async userRefresh(@Body() RefreshObj: { refreshToken: string }) {
+    try {
+      const data = this.jwtService.verify(RefreshObj.refreshToken);
+      const user = await this.userService.findUserById(data.userId, false);
+
+      const accessToken = this.jwtService.sign(
+        {
+          userId: user.id,
+          username: user.username,
+          roles: user.roles,
+          permissions: user.permissions,
+        },
+        {
+          expiresIn:
+            this.configService.get('jwt_access_token_expires_time') || '30m',
+        },
+      );
+      const refresh_token = this.jwtService.sign(
+        {
+          userId: user.id,
+        },
+        {
+          expiresIn:
+            this.configService.get('jwt_refresh_token_expres_time') || '7d',
+        },
+      );
+      return {
+        access_token: accessToken,
+        refresh_token,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('token已失效,请重新登录');
+    }
+  }
 
   @Post('admin-login')
   async adminLogin(@Body() userLoginData: UserLoginDto) {
@@ -101,5 +144,46 @@ export class UserController {
       },
     );
     return vo;
+  }
+
+  @Post('admin-refresh')
+  async adminRefresh(@Body() RefreshObj: { refreshToken: string }) {
+    try {
+      const data = this.jwtService.verify(RefreshObj.refreshToken);
+      const user = await this.userService.findUserById(data.userId, true);
+
+      const resData = this.getJwtToken(user);
+      return resData;
+    } catch (error) {
+      throw new UnauthorizedException('token已失效,请重新登录');
+    }
+  }
+
+  async getJwtToken(user) {
+    const accessToken = this.jwtService.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        roles: user.roles,
+        permissions: user.permissions,
+      },
+      {
+        expiresIn:
+          this.configService.get('jwt_access_token_expires_time') || '30m',
+      },
+    );
+    const refresh_token = this.jwtService.sign(
+      {
+        userId: user.id,
+      },
+      {
+        expiresIn:
+          this.configService.get('jwt_refresh_token_expres_time') || '7d',
+      },
+    );
+    return {
+      access_token: accessToken,
+      refresh_token,
+    };
   }
 }

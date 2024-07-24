@@ -5,6 +5,5 @@ export class UserLoginDto {
   username: string;
 
   @IsNotEmpty({ message: '密码不能为空' })
-  @MinLength(6, { message: '密码不能少于6位' })
   password: string;
 }
